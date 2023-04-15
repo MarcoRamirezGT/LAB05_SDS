@@ -2,7 +2,7 @@
 datos <- read.csv('train_data.csv',header = TRUE)
 str(datos)
 
-# Paso 2: Eliminamos todos los datos que no sean numericos
+# Paso 2: Eliminamos todos los datos que no sean numericos o que tengan constantes 0
 
 
 datos <- datos[, -which(names(datos) == "num_access_files")]

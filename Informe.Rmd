@@ -1,0 +1,213 @@
+---
+title: "Informe"
+author: "Marco Ramírez"
+date: "2023-04-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Lab 05 Security Data Science: Análisis de tráfico, implementación de un IDS
+
+
+### Parte 2: Construcción de un modelo que utilice PCA
+
+##### Paso 1: cargar los datos
+
+```{r}
+
+datos <- read.csv('train_data.csv',header = TRUE)
+str(datos)
+
+```
+
+##### Paso 2: Eliminamos todos los datos que no sean numericos o que tengan constantes 0
+
+```{r}
+
+
+datos <- datos[, -which(names(datos) == "num_access_files")]
+datos <- datos[, -which(names(datos) == "is_host_login")]
+datos <- datos[, -which(names(datos) == "is_guest_login")]
+datos <- datos[, -which(names(datos) == "num_outbound_cmds")]
+datos <- datos[, -which(names(datos) == "duration")]
+datos <- datos[, -which(names(datos) == "protocol_type")]
+datos <- datos[, -which(names(datos) == "service")]
+datos <- datos[, -which(names(datos) == "flag")]
+datos$class <- ifelse(datos$class == "normal", 0, 1)
+
+head(datos,5)
+str(datos)
+
+```
+##### Paso 3: Cargamos lo necesario para realizar el PCA
+
+```{r}
+
+# Cargar la librería necesaria para realizar PCA
+library(stats)
+# Realizar PCA
+pca <- prcomp(datos[,1:33], center = TRUE, scale. = TRUE)
+pca
+
+```
+##### Paso 4: Seleccionar el número de componentes principales que se desean utilizar
+
+```{r message=FALSE, warning=FALSE}
+num_comp <- 10
+pca_data <- data.frame(pca$x[,1:num_comp], class = datos$class)
+```
+
+##### Paso 5: Entrenamiento y prueba
+
+```{r message=FALSE, warning=FALSE}
+
+# Separar la base de datos en un conjunto de entrenamiento y otro de prueba
+library(caTools)
+set.seed(123)
+spl <- sample.split(pca_data$class, SplitRatio = 0.7)
+train <- subset(pca_data, spl == TRUE)
+test <- subset(pca_data, spl == FALSE)
+
+
+
+```
+
+##### Paso 6: Crear el modelo
+
+```{r message=FALSE, warning=FALSE}
+
+# Crear el modelo de regresión logística
+model <- glm(class ~ ., data = train, family = binomial)
+
+
+# Hacer predicciones con el modelo
+pred <- predict(model, newdata = test, type = "response")
+
+```
+
+##### Paso 7: Evaluar el modelo
+
+```{r message=FALSE, warning=FALSE}
+# Evaluar el modelo
+library(pROC)
+roc(test$class, pred)
+
+library(caret)
+# Convertir las predicciones en clases (1 o 0) en lugar de probabilidades
+predicted_classes <- ifelse(pred > 0.5, 1, 0)
+
+# Crear la matriz de confusión
+conf_mat <- confusionMatrix(factor(predicted_classes), factor(test$class))
+conf_mat
+accuracy1 <- conf_mat$overall['Accuracy']
+precision1 <- conf_mat$byClass['Precision'][1]
+recall1 <- conf_mat$byClass['Recall'][1]
+
+
+accuracy1
+precision1
+recall1
+```
+
+### Parte 2.1: Construcción de un modelo sin reducción de dimensionalidad.
+
+##### Paso 1: cargar los datos
+
+```{r}
+
+datos <- read.csv('train_data.csv',header = TRUE)
+str(datos)
+
+```
+
+##### Paso 2: Eliminamos todos los datos que no sean numericos o que tengan constantes 0
+
+```{r}
+
+
+datos <- datos[, -which(names(datos) == "num_access_files")]
+datos <- datos[, -which(names(datos) == "is_host_login")]
+datos <- datos[, -which(names(datos) == "is_guest_login")]
+datos <- datos[, -which(names(datos) == "num_outbound_cmds")]
+datos <- datos[, -which(names(datos) == "duration")]
+datos <- datos[, -which(names(datos) == "protocol_type")]
+datos <- datos[, -which(names(datos) == "service")]
+datos <- datos[, -which(names(datos) == "flag")]
+datos$class <- ifelse(datos$class == "normal", 0, 1)
+
+head(datos,5)
+str(datos)
+
+```
+
+
+##### Paso 3: Entrenamiento y prueba
+
+```{r message=FALSE, warning=FALSE}
+
+
+
+# Separar la base de datos en un conjunto de entrenamiento y otro de prueba
+library(caTools)
+set.seed(123)
+spl <- sample.split(datos$class, SplitRatio = 0.7)
+train <- subset(datos, spl == TRUE)
+test <- subset(datos, spl == FALSE)
+
+```
+
+##### Paso 4: Crear el modelo
+
+```{r message=FALSE, warning=FALSE}
+
+# Crear el modelo de regresión logística
+model <- glm(class ~ ., data = train, family = binomial)
+
+# Hacer predicciones con el modelo
+pred <- predict(model, newdata = test, type = "response")
+
+```
+
+##### Paso 7: Evaluar el modelo
+
+```{r message=FALSE, warning=FALSE}
+# Evaluar el modelo
+library(pROC)
+roc(test$class, pred)
+
+library(caret)
+# Convertir las predicciones en clases (1 o 0) en lugar de probabilidades
+predicted_classes <- ifelse(pred > 0.5, 1, 0)
+
+# Crear la matriz de confusión
+conf_mat <- confusionMatrix(factor(predicted_classes), factor(test$class))
+conf_mat
+accuracy2 <- conf_mat$overall['Accuracy']
+precision2 <- conf_mat$byClass['Precision'][1]
+recall2 <- conf_mat$byClass['Recall'][1]
+
+
+accuracy2
+precision2
+recall2
+```
+
+***
+Como se oberva la diferencia entre ambos modelos es baja:
+
+<table>
+
+Modelo con PCA                      Modelo sin reducucción de dimensionalidad
+---------------               --------------------------------------------
+Accuracy: `r accuracy1`            Accuracy: `r accuracy2`
+Precision: `r precision1`          Precision: `r precision2`
+recall: `r recall1`                recall: `r recall2`
+
+</table>
+
+En base a los resultados obtenidos, podemos observar que el segundo modelo sin reducción de dimensionalidad obtuvo mejores resultados en términos de accuracy y recall. El modelo alcanzó una precisión del 0.9378, lo que significa que de todos los casos que predijo como positivos, el 93.78% realmente lo fueron. Además, el recall del modelo fue de 0.9541, lo que indica que de todos los casos positivos que había en la muestra, el 95.41% fueron detectados correctamente.
+
+Por otro lado, el modelo con PCA obtuvo una precisión un poco mejor, con un valor del 0.9393, pero tuvo un recall ligeramente inferior, con un valor del 0.9388. En general, esto indica que el modelo con PCA pudo detectar la mayoría de los casos positivos, pero tuvo más falsos negativos en comparación con el modelo sin reducción de dimensionalidad. Por lo tanto, podemos concluir que el modelo sin reducción de dimensionalidad fue mejor en términos generales, ya que logró una mayor tasa de detección de casos positivos en la muestra.
